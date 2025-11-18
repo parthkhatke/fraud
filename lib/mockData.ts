@@ -1196,7 +1196,7 @@ export const mockFraudPatternDetails: Record<string, FraudPatternDetails> = {
     approvalThreshold: 800000, // ₹8L
     thresholdLabel: 'Manager',
     averagePOAmount: 1562500, // ₹15.63L
-    averageBelowThreshold: 0,
+    averageBelowThreshold: 0.9,
     averageBelowThresholdPercent: 0,
     totalAmount: 12500000, // ₹125L
     totalContract: 8,
@@ -1283,7 +1283,7 @@ export const mockFraudPatternDetails: Record<string, FraudPatternDetails> = {
     approvalThreshold: 800000,
     thresholdLabel: 'Manager',
     averagePOAmount: 1483333,
-    averageBelowThreshold: 0,
+    averageBelowThreshold: 0.76,
     averageBelowThresholdPercent: 0,
     totalAmount: 8900000,
     totalContract: 6,
@@ -1356,8 +1356,8 @@ export const mockFraudPatternDetails: Record<string, FraudPatternDetails> = {
     approvalThreshold: 1200000, // ₹12L
     thresholdLabel: 'Director',
     averagePOAmount: 1541667, // ₹15.42L
-    averageBelowThreshold: 0,
-    averageBelowThresholdPercent: 0,
+    averageBelowThreshold: 48000, // ₹0.48L (4.0% below)
+    averageBelowThresholdPercent: 4.0,
     totalAmount: 18500000, // ₹185L
     totalContract: 12,
     detectedAt: new Date('2025-11-17T15:54:00').toISOString(),
@@ -1475,8 +1475,8 @@ export const mockFraudPatternDetails: Record<string, FraudPatternDetails> = {
     approvalThreshold: 1200000,
     thresholdLabel: 'Director',
     averagePOAmount: 1520000,
-    averageBelowThreshold: 0,
-    averageBelowThresholdPercent: 0,
+    averageBelowThreshold: 72000, // ₹0.72L (6.0% below)
+    averageBelowThresholdPercent: 6.0,
     totalAmount: 15200000,
     totalContract: 10,
     detectedAt: new Date('2025-11-17T15:54:00').toISOString(),

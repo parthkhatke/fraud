@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FraudPatternDetails } from '@/lib/types';
 import clsx from 'clsx';
 import jsPDF from 'jspdf';
@@ -10,10 +10,43 @@ interface FraudPatternDetailsPanelProps {
   onClose: () => void;
 }
 
-type IndicatorStatus = 'correct' | 'incorrect' | null;
+type IndicatorStatus = 'notSuspiciousInstance' | 'notSuspicious' | null;
+
+interface SavedFraudPatternData {
+  clusterId: string;
+  indicatorStatuses: Record<number, IndicatorStatus>;
+  notSuspiciousPOs: number[];
+  timestamp: string;
+}
 
 export default function FraudPatternDetailsPanel({ details, onClose }: FraudPatternDetailsPanelProps) {
+  // Get storage key for this cluster
+  const getStorageKey = (clusterId: string) => `fraud-pattern-${clusterId}`;
+
   const [indicatorStatuses, setIndicatorStatuses] = useState<Record<number, IndicatorStatus>>({});
+  const [notSuspiciousPOs, setNotSuspiciousPOs] = useState<Set<number>>(new Set());
+
+  // Load saved data from localStorage on mount
+  useEffect(() => {
+    const storageKey = getStorageKey(details.clusterId);
+    const savedDataStr = localStorage.getItem(storageKey);
+    
+    if (savedDataStr) {
+      try {
+        const savedData: SavedFraudPatternData = JSON.parse(savedDataStr);
+        // Restore indicator statuses
+        if (savedData.indicatorStatuses) {
+          setIndicatorStatuses(savedData.indicatorStatuses);
+        }
+        // Restore not suspicious POs
+        if (savedData.notSuspiciousPOs && savedData.notSuspiciousPOs.length > 0) {
+          setNotSuspiciousPOs(new Set(savedData.notSuspiciousPOs));
+        }
+      } catch (error) {
+        console.error('Error loading saved fraud pattern data:', error);
+      }
+    }
+  }, [details.clusterId]);
   const formatAmount = (amount: number): string => {
     const lakhs = amount / 100000;
     return `₹${lakhs.toFixed(2)}L`;
@@ -131,26 +164,54 @@ export default function FraudPatternDetailsPanel({ details, onClose }: FraudPatt
     doc.setFontSize(10);
     doc.setTextColor(lightGray[0], lightGray[1], lightGray[2]);
     
-    const analysisData: Array<[string, number]> = [
-      [`Approval Threshold: ${formatAmount(details.approvalThreshold)} (${details.thresholdLabel})`, margin],
-      [`Average PO Amount: ${formatAmount(details.averagePOAmount)}`, margin + 60],
-      [`Average Below Threshold: ${formatAmount(details.averageBelowThreshold)} (${details.averageBelowThresholdPercent.toFixed(1)}% below)`, margin],
-      [`Total Amount: ${formatAmount(details.totalAmount)}`, margin + 60],
-      [`Total Contract: ${details.totalContract}`, margin],
-      [`Detected At: ${formatDateTime(details.detectedAt)}`, margin + 60],
-    ];
+    const lineHeight = 8;
+    const xPosition = margin;
     
-    analysisData.forEach(([text, x]) => {
-      if (yPosition > 250) {
-        doc.addPage();
-        yPosition = 20;
-      }
-      doc.text(text, x, yPosition);
-      if (x === margin) {
-        yPosition += 7;
-      }
-    });
-    yPosition += 10;
+    // Each item on its own line to avoid overlaps
+    if (yPosition > 250) {
+      doc.addPage();
+      yPosition = 20;
+    }
+    doc.text(`Approval Threshold: ${formatAmount(details.approvalThreshold)} (${details.thresholdLabel})`, xPosition, yPosition);
+    yPosition += lineHeight;
+    
+    if (yPosition > 250) {
+      doc.addPage();
+      yPosition = 20;
+    }
+    doc.text(`Average PO Amount: ${formatAmount(details.averagePOAmount)}`, xPosition, yPosition);
+    yPosition += lineHeight;
+    
+    if (yPosition > 250) {
+      doc.addPage();
+      yPosition = 20;
+    }
+    // Split long text to avoid overlap
+    const belowThresholdText = `Average Below Threshold: ${formatAmount(details.averageBelowThreshold)} (${details.averageBelowThresholdPercent.toFixed(1)}% below)`;
+    const belowThresholdLines = doc.splitTextToSize(belowThresholdText, contentWidth);
+    doc.text(belowThresholdLines, xPosition, yPosition);
+    yPosition += (belowThresholdLines.length * lineHeight);
+    
+    if (yPosition > 250) {
+      doc.addPage();
+      yPosition = 20;
+    }
+    doc.text(`Total Amount: ${formatAmount(details.totalAmount)}`, xPosition, yPosition);
+    yPosition += lineHeight;
+    
+    if (yPosition > 250) {
+      doc.addPage();
+      yPosition = 20;
+    }
+    doc.text(`Total Contract: ${details.totalContract}`, xPosition, yPosition);
+    yPosition += lineHeight;
+    
+    if (yPosition > 250) {
+      doc.addPage();
+      yPosition = 20;
+    }
+    doc.text(`Detected At: ${formatDateTime(details.detectedAt)}`, xPosition, yPosition);
+    yPosition += lineHeight + 5;
     
     // Suspicious Purchase Orders
     if (yPosition > 200) {
@@ -245,6 +306,28 @@ export default function FraudPatternDetailsPanel({ details, onClose }: FraudPatt
     // Save the PDF
     doc.save(`fraud-pattern-${details.clusterId}-${Date.now()}.pdf`);
   };
+//handle save button logic
+  const handleSave = () => {
+    // Save the changes made to fraud indicators and suspicious POs
+    const savedData: SavedFraudPatternData = {
+      clusterId: details.clusterId,
+      indicatorStatuses: indicatorStatuses,
+      notSuspiciousPOs: Array.from(notSuspiciousPOs),
+      timestamp: new Date().toISOString(),
+    };
+    
+    // Save to localStorage
+    const storageKey = getStorageKey(details.clusterId);
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(savedData));
+      console.log('Saving fraud pattern changes to localStorage:', savedData);
+      alert(`Changes saved successfully for cluster ${details.clusterId}`);
+      onClose(); // Close the panel after saving
+    } catch (error) {
+      console.error('Error saving fraud pattern data:', error);
+      alert('Error saving changes. Please try again.');
+    }
+  };
 
   const handleEscalate = () => {
     // Escalate fraud to higher authority
@@ -329,7 +412,29 @@ export default function FraudPatternDetailsPanel({ details, onClose }: FraudPatt
 
           {/* Fraud Indicators */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-800 mb-3">Fraud Indicators</h3>
+            <div className="mb-3">
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Fraud Indicators</h3>
+              <div className="flex items-center gap-4 text-xs text-gray-600">
+                <div className="flex items-center gap-1.5">
+                  <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span>Active/Suspicious</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <svg className="w-4 h-4 text-blue-700" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                  <span>Not suspicious of this instance</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <svg className="w-4 h-4 text-red-700" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                  <span>Not suspicious</span>
+                </div>
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               {details.fraudIndicators.map((indicator, idx) => {
                 const status = indicatorStatuses[idx] || null;
@@ -350,12 +455,12 @@ export default function FraudPatternDetailsPanel({ details, onClose }: FraudPatt
                 return (
                   <div key={idx} className="flex items-center justify-between gap-2 text-sm text-gray-700 bg-gray-50 p-3 rounded-lg border border-gray-200">
                     <div className="flex items-center gap-2 flex-1">
-                      {status === 'correct' ? (
-                        <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      {status === 'notSuspiciousInstance' ? (
+                        <svg className="w-5 h-5 text-blue-700 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                         </svg>
-                      ) : status === 'incorrect' ? (
-                        <svg className="w-5 h-5 text-red-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      ) : status === 'notSuspicious' ? (
+                        <svg className="w-5 h-5 text-red-700 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                         </svg>
                       ) : (
@@ -364,36 +469,35 @@ export default function FraudPatternDetailsPanel({ details, onClose }: FraudPatt
                         </svg>
                       )}
                       <span className={clsx(
-                        status === 'incorrect' && 'line-through text-gray-400',
-                        status === 'correct' && 'font-medium'
+                        (status === 'notSuspiciousInstance' || status === 'notSuspicious') && 'line-through text-gray-400'
                       )}>{indicator}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <button
-                        onClick={() => handleToggle('correct')}
+                        onClick={() => handleToggle('notSuspiciousInstance')}
                         className={clsx(
                           'p-1.5 rounded transition-colors',
-                          status === 'correct' 
-                            ? 'bg-green-100 text-green-700 hover:bg-green-200' 
-                            : 'bg-gray-100 text-gray-400 hover:bg-green-50 hover:text-green-600'
+                          status === 'notSuspiciousInstance' 
+                            ? 'bg-blue-700 text-blue-50 hover:bg-blue-800' 
+                            : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
                         )}
-                        title="Mark as correct"
-                        aria-label={`Mark ${indicator} as correct`}
+                        title="Not suspicious of this particular instance"
+                        aria-label="Not suspicious of this particular instance"
                       >
                         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                         </svg>
                       </button>
                       <button
-                        onClick={() => handleToggle('incorrect')}
+                        onClick={() => handleToggle('notSuspicious')}
                         className={clsx(
                           'p-1.5 rounded transition-colors',
-                          status === 'incorrect' 
-                            ? 'bg-red-100 text-red-700 hover:bg-red-200' 
-                            : 'bg-gray-100 text-gray-400 hover:bg-red-50 hover:text-red-600'
+                          status === 'notSuspicious' 
+                            ? 'bg-orange-700 text-orange-50 hover:bg-orange-800' 
+                            : 'bg-orange-50 text-orange-700 hover:bg-orange-100'
                         )}
-                        title="Mark as incorrect"
-                        aria-label={`Mark ${indicator} as incorrect`}
+                        title="Not suspicious"
+                        aria-label="Not suspicious"
                       >
                         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
@@ -454,23 +558,78 @@ export default function FraudPatternDetailsPanel({ details, onClose }: FraudPatt
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">SUPPLIER</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">REQUISITIONER</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">MATERIAL</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">NOT SUSPICIOUS</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {details.suspiciousPOs.map((po, idx) => (
-                    <tr key={idx} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{po.poNumber}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{formatDate(po.date)}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{formatAmount(po.amount)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{po.supplier}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{po.requisitioner}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{po.material}</td>
-                    </tr>
-                  ))}
+                  {details.suspiciousPOs.map((po, idx) => {
+                    const isNotSuspicious = notSuspiciousPOs.has(idx);
+                    
+                    const handleToggleNotSuspicious = () => {
+                      setNotSuspiciousPOs(prev => {
+                        const newSet = new Set(prev);
+                        if (newSet.has(idx)) {
+                          newSet.delete(idx);
+                        } else {
+                          newSet.add(idx);
+                        }
+                        return newSet;
+                      });
+                    };
+
+                    return (
+                      <tr key={idx} className={clsx('hover:bg-gray-50', isNotSuspicious && 'opacity-60')}>
+                        <td className={clsx('px-4 py-3 whitespace-nowrap text-sm font-medium', isNotSuspicious ? 'text-gray-400 line-through' : 'text-gray-900')}>{po.poNumber}</td>
+                        <td className={clsx('px-4 py-3 whitespace-nowrap text-sm', isNotSuspicious ? 'text-gray-400' : 'text-gray-600')}>{formatDate(po.date)}</td>
+                        <td className={clsx('px-4 py-3 whitespace-nowrap text-sm font-medium', isNotSuspicious ? 'text-gray-400' : 'text-gray-900')}>{formatAmount(po.amount)}</td>
+                        <td className={clsx('px-4 py-3 text-sm', isNotSuspicious ? 'text-gray-400' : 'text-gray-600')}>{po.supplier}</td>
+                        <td className={clsx('px-4 py-3 text-sm', isNotSuspicious ? 'text-gray-400' : 'text-gray-600')}>{po.requisitioner}</td>
+                        <td className={clsx('px-4 py-3 text-sm', isNotSuspicious ? 'text-gray-400' : 'text-gray-600')}>{po.material}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-center">
+                          <button
+                            onClick={handleToggleNotSuspicious}
+                            className={clsx(
+                              'inline-flex items-center justify-center w-8 h-8 rounded border transition-colors',
+                              isNotSuspicious
+                                ? 'bg-green-100 border-green-300 text-green-700 hover:bg-green-200'
+                                : 'bg-white border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+                            )}
+                            title={isNotSuspicious ? 'Mark as suspicious' : 'Mark as not suspicious'}
+                            aria-label={isNotSuspicious ? 'Mark as suspicious' : 'Mark as not suspicious'}
+                          >
+                            {isNotSuspicious && (
+                              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           </div>
+        </div>
+        
+        {/* Footer with Save Button */}
+        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-slate-50">
+          <button
+            onClick={onClose}
+            className="btn btn-ghost btn-sm"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            className="btn btn-primary btn-sm gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            Save Changes
+          </button>
         </div>
       </div>
     </div>

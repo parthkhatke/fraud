@@ -93,7 +93,7 @@ export default function StatsPanel() {
         </div>
       </div>
 
-      {/* Latest Alerts - Only show when side panel is open, not during training */}
+      {/* Latest Alerts - Only show when side panel is open, not during training
       {latestAlerts.length > 0 && sidePanelEntityType && simulationStatus !== 'running' && (
         <div className="mt-3 pt-3 border-t border-slate-200">
           <h2 className="text-xs font-semibold mb-2 text-slate-700">Latest Alerts</h2>
@@ -134,7 +134,7 @@ export default function StatsPanel() {
             })}
           </div>
         </div>
-      )}
+      )} */}
 
 
       {/* Risk Items Modal */}
