@@ -18,6 +18,8 @@ export default function StatsPanel() {
     selectProcessNode,
     selectKnowledgeNode,
     setActiveAlertModal,
+    simulationStatus,
+    sidePanelEntityType,
   } = useFraudSimulation();
 
   const [showRiskModal, setShowRiskModal] = useState(false);
@@ -49,69 +51,54 @@ export default function StatsPanel() {
   };
 
   return (
-    <aside className="w-64 border-r border-slate-200 p-4 overflow-y-auto bg-white shadow-sm">
-      <div className="mb-6 p-4 rounded-lg bg-gradient-to-br from-slate-50 to-blue-50 border border-slate-200">
-        <h1 className="text-2xl font-bold text-slate-800">
-        Fraud Detection Across Procurement Lifecycle
-        </h1>
-        <p className="text-sm text-slate-600 mt-1 flex items-center gap-2">
-          <span className="w-2 h-2 bg-success rounded-full animate-pulse"></span>
-          Real-time Detection
-        </p>
-      </div>
-
-      {/* KPI Cards */}
-      <div className="space-y-3 mb-6">
-        <div className="stat bg-white rounded-lg p-4 border border-slate-200 shadow-sm hover:shadow-md hover:border-primary/30 transition-all">
-          <div className="stat-title text-xs text-slate-600 font-medium">Total PRs</div>
-          <div className="stat-value text-2xl text-primary font-bold">{prs.length}</div>
-        </div>
-
-        <div className="stat bg-white rounded-lg p-4 border border-slate-200 shadow-sm hover:shadow-md hover:border-secondary/30 transition-all">
-          <div className="stat-title text-xs text-slate-600 font-medium">Total POs</div>
-          <div className="stat-value text-2xl text-secondary font-bold">{pos.length}</div>
-        </div>
-
-        <div className="stat bg-white rounded-lg p-4 border border-slate-200 shadow-sm hover:shadow-md hover:border-accent/30 transition-all">
-          <div className="stat-title text-xs text-slate-600 font-medium">Total Invoices</div>
-          <div className="stat-value text-2xl text-accent font-bold">{invoices.length}</div>
-        </div>
-
-        <div className="stat bg-white rounded-lg p-4 border border-slate-200 shadow-sm hover:shadow-md hover:border-info/30 transition-all">
-          <div className="stat-title text-xs text-slate-600 font-medium">Total Exposure</div>
-          <div className="stat-value text-xl text-info font-bold">
-            ₹{totalExposure.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+    <header className="w-full border-b border-slate-200 p-6 bg-white shadow-sm">
+      <div className="flex items-center justify-between gap-6">
+        {/* Title Section */}
+        <div className="flex items-center gap-6 flex-shrink-0">
+          <div className="min-w-0">
+            <h1 className="text-3xl font-bold text-slate-800 whitespace-nowrap">
+              Fraud Detection Across Procurement Lifecycle
+            </h1>
+            <p className="text-sm text-slate-600 flex items-center gap-2 mt-2">
+              <span className="w-3 h-3 bg-success rounded-full animate-pulse"></span>
+              Real-time Detection
+            </p>
           </div>
         </div>
-      </div>
 
-      {/* Risk Summary */}
-      <div className="mb-6">
-        <h2 className="text-sm font-semibold mb-2 text-slate-700">Risk Summary</h2>
-        <button
-          onClick={() => setShowRiskModal(true)}
-          className="w-full bg-white rounded-lg p-3 border border-slate-200 shadow-sm hover:shadow-md hover:border-error/30 transition-all text-left"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-slate-700">High/Critical Risk Items</span>
-            <span className={clsx(
-              'badge badge-lg font-semibold',
-              highRiskCount >= 5 ? 'badge-error' : highRiskCount >= 2 ? 'badge-warning' : 'badge-success'
-            )}>
-              {highRiskCount}
-            </span>
+        {/* KPI Cards - Horizontal */}
+        <div className="flex items-center gap-6 flex-shrink-0">
+          <div className="stat bg-white rounded-lg p-5 border border-slate-200 shadow-sm hover:shadow-md hover:border-info/30 transition-all">
+            <div className="stat-title text-sm text-slate-600 font-medium">Total Exposure</div>
+            <div className="stat-value text-2xl text-info font-bold">
+              ₹{totalExposure.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+            </div>
           </div>
-        </button>
+
+          {/* Risk Summary */}
+          <button
+            onClick={() => setShowRiskModal(true)}
+            className="bg-white rounded-lg p-5 border border-slate-200 shadow-sm hover:shadow-md hover:border-error/30 transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-slate-700">High/Critical Risk</span>
+              <span className={clsx(
+                'badge badge-lg font-semibold',
+                highRiskCount >= 5 ? 'badge-error' : highRiskCount >= 2 ? 'badge-warning' : 'badge-success'
+              )}>
+                {highRiskCount}
+              </span>
+            </div>
+          </button>
+        </div>
       </div>
 
-      {/* Latest Alerts */}
-      <div className="mb-6">
-        <h2 className="text-sm font-semibold mb-2">Latest Alerts</h2>
-        <div className="space-y-2 max-h-48 overflow-y-auto">
-          {latestAlerts.length === 0 ? (
-            <p className="text-xs text-base-content/60 p-2">No alerts yet</p>
-          ) : (
-            latestAlerts.map((alert) => {
+      {/* Latest Alerts - Only show when side panel is open, not during training */}
+      {latestAlerts.length > 0 && sidePanelEntityType && simulationStatus !== 'running' && (
+        <div className="mt-3 pt-3 border-t border-slate-200">
+          <h2 className="text-xs font-semibold mb-2 text-slate-700">Latest Alerts</h2>
+          <div className="flex gap-2 overflow-x-auto">
+            {latestAlerts.map((alert) => {
               const severityClass = {
                 low: 'badge-success',
                 medium: 'badge-warning',
@@ -124,7 +111,7 @@ export default function StatsPanel() {
                   key={alert.id}
                   onClick={() => handleAlertClick(alert)}
                   className={clsx(
-                    'w-full text-left rounded-lg p-3 transition-all hover:shadow-md border',
+                    'flex-shrink-0 text-left rounded-lg p-2 transition-all hover:shadow-md border min-w-[200px]',
                     severityClass === 'badge-error' 
                       ? 'bg-white border-error/30 hover:border-error/50 hover:bg-error/5'
                       : severityClass === 'badge-warning'
@@ -138,62 +125,21 @@ export default function StatsPanel() {
                       {alert.severity}
                     </span>
                   </div>
-                  <p className="text-xs text-base-content/80 line-clamp-2 font-medium">
+                  <p className="text-xs text-base-content/80 line-clamp-1 font-medium">
                     {alert.reason}
                   </p>
-                  <p className="text-xs text-base-content/60 mt-1 font-mono">{alert.entityId}</p>
+                  <p className="text-xs text-base-content/60 mt-1 font-mono truncate">{alert.entityId}</p>
                 </button>
               );
-            })
-          )}
-        </div>
-      </div>
-
-      {/* Pending Actions */}
-      {pendingActions.length > 0 && (
-        <div className="mb-6">
-          <h2 className="text-sm font-semibold mb-2">Pending Actions</h2>
-          <div className="space-y-2 max-h-32 overflow-y-auto">
-            {pendingActions.map((action) => (
-              <div
-                key={action.id}
-                className="bg-base-200 rounded-lg p-2 text-xs"
-              >
-                <div className="font-medium">{action.type}</div>
-                <div className="text-base-content/60">{action.entityId}</div>
-                <div className="text-base-content/50 mt-1">
-                  {action.managerName} - {action.status}
-                </div>
-              </div>
-            ))}
+            })}
           </div>
         </div>
       )}
 
-      {/* Investigation Tickets */}
-      {tickets.length > 0 && (
-        <div>
-          <h2 className="text-sm font-semibold mb-2">Investigation Tickets</h2>
-          <div className="space-y-2 max-h-32 overflow-y-auto">
-            {tickets.map((ticket) => (
-              <div
-                key={ticket.id}
-                className="bg-base-200 rounded-lg p-2 text-xs"
-              >
-                <div className="font-medium">{ticket.id}</div>
-                <div className="text-base-content/60">{ticket.entityType} - {ticket.entityId}</div>
-                <div className="text-base-content/50 mt-1">
-                  Status: <span className="badge badge-xs badge-warning">{ticket.status}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Risk Items Modal */}
       <RiskItemsModal isOpen={showRiskModal} onClose={() => setShowRiskModal(false)} />
-    </aside>
+    </header>
   );
 }
 

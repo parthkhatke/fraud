@@ -91,14 +91,19 @@ export interface FraudAlert {
   createdAt: string;
   suggestedActions: string[];
   simulationStepIndex?: number; // When to fire in simulation
+  isDummy?: boolean; // Flag to exclude from diagram node highlighting
 }
 
 export type ProcessNodeKind =
+  | 'identifyRequirement'
   | 'pr'
+  | 'plannedDelivery'
+  | 'procurementOfMaterial'
   | 'existingSupplier'
-  | 'rfq'
+  | 'identificationOfVendor'
+  | 'selectionOfVendor'
   | 'po'
-  | 'gr'
+  | 'goodsShipment'
   | 'goodsIssue'
   | 'invoice'
   | 'payment';
@@ -145,6 +150,67 @@ export interface PatternAnalysisResult {
     supplierName: string;
     totalPOValue: number;
     invoiceOnHoldCount: number;
+  }>;
+}
+
+export interface POCluster {
+  id: string;
+  clusterId: string; // e.g., "cluster-supplier-1-emp-1"
+  supplierId: string;
+  employeeId: string;
+  riskScore: number; // 0-100
+  contractInvolved: number;
+  totalAmount: number; // in base units (will be converted to Lakhs)
+  detectedAt: string; // ISO date string
+  pos: PO[]; // Related POs
+}
+
+export interface PRCluster {
+  id: string;
+  clusterId: string; // e.g., "pr-cluster-dept-1-emp-2"
+  department: string;
+  employeeId: string;
+  riskScore: number; // 0-100
+  requestsInvolved: number;
+  totalAmount: number; // in base units
+  detectedAt: string; // ISO date string
+  prs: PR[]; // Related PRs
+}
+
+export interface InvoiceCluster {
+  id: string;
+  clusterId: string; // e.g., "inv-cluster-supplier-3-amount"
+  supplierId: string;
+  riskScore: number; // 0-100
+  invoicesInvolved: number;
+  totalAmount: number; // in base units
+  detectedAt: string; // ISO date string
+  invoices: Invoice[]; // Related Invoices
+}
+
+export type EntityCluster = POCluster | PRCluster | InvoiceCluster;
+
+export interface FraudPatternDetails {
+  clusterId: string;
+  riskScore: number;
+  patternType: string;
+  patternDescription: string;
+  fraudIndicators: string[];
+  approvalThreshold: number; // in base units
+  thresholdLabel: string; // e.g., "Manager"
+  averagePOAmount: number; // in base units
+  averageBelowThreshold: number; // in base units
+  averageBelowThresholdPercent: number;
+  totalAmount: number; // in base units
+  totalContract: number;
+  detectedAt: string;
+  suspiciousPOs: Array<{
+    poNumber: string;
+    date: string;
+    amount: number;
+    supplier: string;
+    requisitioner: string;
+    material: string;
   }>;
 }
 

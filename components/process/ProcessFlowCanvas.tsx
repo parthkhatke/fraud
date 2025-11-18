@@ -30,78 +30,32 @@ export default function ProcessFlowCanvas() {
     handleContextAction,
     currentActiveNodeId,
     setActiveAlertModal,
+    openSidePanel,
   } = useFraudSimulation();
 
-  // Define process nodes
+  // Define process nodes matching the flowchart structure - exact layout
   const initialNodes: Node<ProcessNodeData>[] = useMemo(() => [
+    // Top row - Goods flow (y: 0)
     {
-      id: 'pr',
+      id: 'goodsShipment',
       type: 'process',
-      position: { x: 50, y: 100 },
+      position: { x: 750, y: 0 },
       data: {
-        label: 'PR Generated',
-        description: 'Purchase Request Creation',
-        stepNumbers: [1, 2, 3, 4, 5],
-        stage: 'pr',
-        riskScore: 0.5,
-      },
-    },
-    {
-      id: 'existingSupplier',
-      type: 'process',
-      position: { x: 300, y: 100 },
-      data: {
-        label: 'Existing Contracted Supplier',
-        description: 'Supplier Selection',
-        stepNumbers: [6],
-        stage: 'existingSupplier',
-        riskScore: 0.6,
-      },
-    },
-    {
-      id: 'rfq',
-      type: 'process',
-      position: { x: 550, y: 100 },
-      data: {
-        label: 'RFQ / RFP Process',
-        description: 'Request for Quotation',
-        stepNumbers: [7, 8, 9, 10, 11, 12, 13, 14],
-        stage: 'rfq',
+        label: 'Goods Shipment',
+        description: 'Goods Shipment',
+        stepNumbers: [7],
+        stage: 'goodsShipment',
         riskScore: 0.4,
-      },
-    },
-    {
-      id: 'po',
-      type: 'process',
-      position: { x: 800, y: 100 },
-      data: {
-        label: 'PO Creation & Acknowledgement',
-        description: 'Purchase Order',
-        stepNumbers: [15, 16, 17],
-        stage: 'po',
-        riskScore: 0.7,
-      },
-    },
-    {
-      id: 'gr',
-      type: 'process',
-      position: { x: 1050, y: 100 },
-      data: {
-        label: 'Goods Receipt',
-        description: 'Accounting Entry Happens',
-        stepNumbers: [18],
-        stage: 'gr',
-        riskScore: 0.65,
       },
     },
     {
       id: 'goodsIssue',
       type: 'process',
-      position: { x: 1300, y: 100 },
+      position: { x: 1000, y: 0 },
       data: {
-        label: 'Goods Issue to User Dept.',
+        label: 'Goods Issue to user Dept',
         description: 'Accounting Entry Happens',
-        stepNumbers: [19],
+        stepNumbers: [18, 19],
         stage: 'goodsIssue',
         riskScore: 0.3,
       },
@@ -109,7 +63,7 @@ export default function ProcessFlowCanvas() {
     {
       id: 'invoice',
       type: 'process',
-      position: { x: 1550, y: 100 },
+      position: { x: 1250, y: 0 },
       data: {
         label: 'Invoice Recording',
         description: 'Accounting Entry Happens',
@@ -121,7 +75,7 @@ export default function ProcessFlowCanvas() {
     {
       id: 'payment',
       type: 'process',
-      position: { x: 1800, y: 100 },
+      position: { x: 1500, y: 0 },
       data: {
         label: 'Payment to Supplier',
         description: 'Accounting Entry Happens',
@@ -130,16 +84,135 @@ export default function ProcessFlowCanvas() {
         riskScore: 0.2,
       },
     },
+    // Middle row - Initial flow and PO (y: 150)
+    {
+      id: 'identifyRequirement',
+      type: 'process',
+      position: { x: 0, y: 150 },
+      data: {
+        label: 'Identify Requirement of user',
+        description: 'User Requirement Identification',
+        stepNumbers: [1],
+        stage: 'identifyRequirement',
+        riskScore: 0.2,
+      },
+    },
+    {
+      id: 'pr',
+      type: 'process',
+      position: { x: 250, y: 150 },
+      data: {
+        label: 'PR',
+        description: 'Purchase Request Creation',
+        stepNumbers: [2, 3, 4, 5],
+        stage: 'pr',
+        riskScore: 0.5,
+      },
+    },
+    {
+      id: 'plannedDelivery',
+      type: 'process',
+      position: { x: 500, y: 150 },
+      data: {
+        label: 'Planned delivery',
+        description: 'Check Planned Delivery',
+        stepNumbers: [6],
+        stage: 'plannedDelivery',
+        riskScore: 0.3,
+      },
+    },
+    {
+      id: 'po',
+      type: 'process',
+      position: { x: 1000, y: 150 },
+      data: {
+        label: 'PO',
+        description: 'Purchase Order',
+        stepNumbers: [16, 17],
+        stage: 'po',
+        riskScore: 0.7,
+      },
+    },
+    // Bottom row - Alternative flow / Vendor selection (y: 300)
+    {
+      id: 'procurementOfMaterial',
+      type: 'process',
+      position: { x: 750, y: 300 },
+      data: {
+        label: 'Procurement of material',
+        description: 'Material Procurement',
+        stepNumbers: [8],
+        stage: 'procurementOfMaterial',
+        riskScore: 0.5,
+      },
+    },
+    {
+      id: 'existingSupplier',
+      type: 'process',
+      position: { x: 1000, y: 300 },
+      data: {
+        label: 'Existing Contracted Supplier',
+        description: 'Supplier Selection',
+        stepNumbers: [9],
+        stage: 'existingSupplier',
+        riskScore: 0.6,
+      },
+    },
+    {
+      id: 'identificationOfVendor',
+      type: 'process',
+      position: { x: 1250, y: 300 },
+      data: {
+        label: 'Identification of Vendor / RFQ',
+        description: 'Vendor Identification',
+        stepNumbers: [10, 11, 12, 13, 14],
+        stage: 'identificationOfVendor',
+        riskScore: 0.4,
+      },
+    },
+    {
+      id: 'selectionOfVendor',
+      type: 'process',
+      position: { x: 1500, y: 300 },
+      data: {
+        label: 'Selection of Vendor',
+        description: 'Vendor Selection',
+        stepNumbers: [15],
+        stage: 'selectionOfVendor',
+        riskScore: 0.7,
+      },
+    },
   ], []);
 
   const initialEdges: Edge[] = useMemo(() => [
-    { id: 'e1', source: 'pr', target: 'existingSupplier', animated: false },
-    { id: 'e2', source: 'existingSupplier', target: 'rfq', animated: false },
-    { id: 'e3', source: 'rfq', target: 'po', animated: false },
-    { id: 'e4', source: 'po', target: 'gr', animated: false },
-    { id: 'e5', source: 'gr', target: 'goodsIssue', animated: false },
-    { id: 'e6', source: 'goodsIssue', target: 'invoice', animated: false },
-    { id: 'e7', source: 'invoice', target: 'payment', animated: false },
+    // Main flow - Top row
+    { id: 'e1', source: 'identifyRequirement', target: 'pr', animated: false },
+    { id: 'e2', source: 'pr', target: 'plannedDelivery', animated: false },
+    
+    // Planned delivery branches - YES goes to top row, NO goes to bottom row
+    { id: 'e3-yes', source: 'plannedDelivery', target: 'goodsShipment', animated: false, label: 'YES', labelStyle: { fill: '#10b981', fontWeight: 600 }, style: { strokeWidth: 2 } },
+    { id: 'e3-no', source: 'plannedDelivery', target: 'procurementOfMaterial', animated: false, label: 'NO', labelStyle: { fill: '#ef4444', fontWeight: 600 }, style: { strokeWidth: 2 } },
+    
+    // Goods shipment path (top row continuation)
+    { id: 'e4', source: 'goodsShipment', target: 'goodsIssue', animated: false },
+    
+    // Procurement path (bottom row)
+    { id: 'e5', source: 'procurementOfMaterial', target: 'existingSupplier', animated: false },
+    
+    // Existing supplier branches - YES goes up to PO, NO continues on bottom row
+    { id: 'e6-yes', source: 'existingSupplier', target: 'po', animated: false, label: 'YES', labelStyle: { fill: '#10b981', fontWeight: 600 }, style: { strokeWidth: 2 } },
+    { id: 'e6-no', source: 'existingSupplier', target: 'identificationOfVendor', animated: false, label: 'NO', labelStyle: { fill: '#ef4444', fontWeight: 600 }, style: { strokeWidth: 2 } },
+    
+    // Vendor identification path (bottom row continuation)
+    { id: 'e7', source: 'identificationOfVendor', target: 'selectionOfVendor', animated: false },
+    { id: 'e8', source: 'selectionOfVendor', target: 'po', animated: false },
+    
+    // PO to goods issue (merges back to top row)
+    { id: 'e9', source: 'po', target: 'goodsIssue', animated: false },
+    
+    // Final flow (top row)
+    { id: 'e10', source: 'goodsIssue', target: 'invoice', animated: false },
+    { id: 'e11', source: 'invoice', target: 'payment', animated: false },
   ], []);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
@@ -155,10 +228,12 @@ export default function ProcessFlowCanvas() {
     setNodes((nds) =>
       nds.map((node) => {
         const alertForNode = activeAlerts.find((alert) => {
+          // Skip dummy alerts that shouldn't affect node colors
+          if (alert.isDummy) return false;
           const nodeMap: Record<string, string> = {
             PR: 'pr',
             PO: 'po',
-            GR: 'gr',
+            GR: 'goodsIssue',
             Invoice: 'invoice',
             Supplier: 'existingSupplier',
           };
@@ -167,6 +242,10 @@ export default function ProcessFlowCanvas() {
 
         const isActive = currentActiveNodeId === node.id && simulationStatus === 'running';
         const hasAlert = !!alertForNode;
+        
+        // Nodes that should have red border outline
+        const redBorderNodes = ['pr', 'po', 'invoice'];
+        const shouldHaveRedBorder = redBorderNodes.includes(node.id);
 
         return {
           ...node,
@@ -174,6 +253,7 @@ export default function ProcessFlowCanvas() {
             ...node.data,
             hasActiveAlert: hasAlert,
             isActive: isActive,
+            hasRedBorder: shouldHaveRedBorder,
           },
           selected: selectedProcessNodeId === node.id,
           style: {
@@ -188,16 +268,18 @@ export default function ProcessFlowCanvas() {
   // Animate edges during simulation - only animate up to current active node
   React.useEffect(() => {
     if (simulationStatus === 'running' && currentActiveNodeId) {
-      const nodeOrder = ['pr', 'existingSupplier', 'rfq', 'po', 'gr', 'goodsIssue', 'invoice', 'payment'];
-      const edgeIds = ['e1', 'e2', 'e3', 'e4', 'e5', 'e6', 'e7'];
+      const nodeOrder = ['identifyRequirement', 'pr', 'plannedDelivery', 'goodsShipment', 'procurementOfMaterial', 'existingSupplier', 'identificationOfVendor', 'selectionOfVendor', 'po', 'goodsIssue', 'invoice', 'payment'];
+      const edgeIds = ['e1', 'e2', 'e3-yes', 'e3-no', 'e4', 'e5', 'e6-yes', 'e6-no', 'e7', 'e8', 'e9', 'e10', 'e11'];
       const currentNodeIndex = nodeOrder.indexOf(currentActiveNodeId);
-      const activeEdgeIndex = Math.min(currentNodeIndex, edgeIds.length - 1);
       
       setEdges((eds) =>
-        eds.map((edge) => ({
-          ...edge,
-          animated: edgeIds.indexOf(edge.id) <= activeEdgeIndex,
-        }))
+        eds.map((edge) => {
+          const edgeIndex = edgeIds.indexOf(edge.id);
+          return {
+            ...edge,
+            animated: edgeIndex >= 0 && edgeIndex <= currentNodeIndex * 2, // Approximate animation
+          };
+        })
       );
     } else {
       setEdges((eds) => eds.map((edge) => ({ ...edge, animated: false })));
@@ -205,15 +287,29 @@ export default function ProcessFlowCanvas() {
   }, [simulationStatus, currentActiveNodeId, setEdges]);
 
   const onNodeClick = useCallback(
-    (_: React.MouseEvent, node: Node) => {
+    (_: React.MouseEvent, node: Node<ProcessNodeData>) => {
       selectProcessNode(node.id);
+      
+      // Check if this is a clickable node (PR, PO, or Invoice)
+      const clickableNodes: Record<string, 'PR' | 'PO' | 'Invoice'> = {
+        pr: 'PR',
+        po: 'PO',
+        invoice: 'Invoice',
+      };
+      
+      const entityType = clickableNodes[node.data.stage];
+      if (entityType) {
+        // Open side panel for PR, PO, or Invoice nodes
+        openSidePanel(entityType);
+        return;
+      }
       
       // If node has an alert, show the alert modal
       const alertForNode = activeAlerts.find((alert) => {
         const nodeMap: Record<string, string> = {
           PR: 'pr',
           PO: 'po',
-          GR: 'gr',
+          GR: 'goodsIssue',
           Invoice: 'invoice',
           Supplier: 'existingSupplier',
         };
@@ -224,7 +320,7 @@ export default function ProcessFlowCanvas() {
         setActiveAlertModal(alertForNode);
       }
     },
-    [selectProcessNode, activeAlerts, setActiveAlertModal]
+    [selectProcessNode, activeAlerts, setActiveAlertModal, openSidePanel]
   );
 
   return (

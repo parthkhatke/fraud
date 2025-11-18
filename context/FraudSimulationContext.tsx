@@ -14,6 +14,9 @@ import {
   InvestigationTicket,
   PendingAction,
   PatternAnalysisResult,
+  POCluster,
+  PRCluster,
+  InvoiceCluster,
 } from '@/lib/types';
 import {
   mockSuppliers,
@@ -27,6 +30,9 @@ import {
   allMockPRs,
   allMockPOs,
   allMockInvoices,
+  mockPOClusters,
+  mockPRClusters,
+  mockInvoiceClusters,
 } from '@/lib/mockData';
 import { computePatternAnalysis } from '@/lib/risk';
 
@@ -44,6 +50,9 @@ interface FraudSimulationContextType {
   tickets: InvestigationTicket[];
   pendingActions: PendingAction[];
   patternAnalysis: PatternAnalysisResult | null;
+  poClusters: POCluster[];
+  prClusters: PRCluster[];
+  invoiceClusters: InvoiceCluster[];
 
   // Simulation state
   simulationStatus: SimulationStatus;
@@ -52,6 +61,7 @@ interface FraudSimulationContextType {
   selectedProcessNodeId: string | null;
   selectedKnowledgeNodeId: string | null;
   activeAlertModal: FraudAlert | null;
+  sidePanelEntityType: 'PR' | 'PO' | 'Invoice' | null;
 
   // Actions
   initializeSimulation: () => void;
@@ -73,14 +83,28 @@ interface FraudSimulationContextType {
   markAlertAsMistake: (alertId: string) => void;
   reportAlert: (alertId: string) => void;
   downloadAlertReport: (alert: FraudAlert) => void;
+  openSidePanel: (entityType: 'PR' | 'PO' | 'Invoice') => void;
+  closeSidePanel: () => void;
 }
 
 const FraudSimulationContext = createContext<FraudSimulationContextType | undefined>(undefined);
 
+// Define dummy alerts that should always be preserved (defined outside component to avoid recreation)
+const getDummyAlerts = (): FraudAlert[] => [
+  { ...mockFraudAlerts[0], isDummy: true }, // ALERT-001 - Invoice
+  { ...mockFraudAlerts[1], isDummy: true }, // ALERT-002 - PO
+  { ...mockFraudAlerts[2], isDummy: true }, // ALERT-003 - Invoice
+  { ...mockFraudAlerts[3], isDummy: true }, // ALERT-004 - GR
+  { ...(mockFraudAlerts[4] || mockFraudAlerts[0]), isDummy: true }, // ALERT-005 or fallback
+];
+
 export function FraudSimulationProvider({ children }: { children: React.ReactNode }) {
   const [simulationStatus, setSimulationStatus] = useState<SimulationStatus>('idle');
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [activeAlerts, setActiveAlerts] = useState<FraudAlert[]>([]);
+  
+  // Initialize with 5 dummy alerts that won't affect diagram nodes
+  const [activeAlerts, setActiveAlerts] = useState<FraudAlert[]>(() => getDummyAlerts());
+  
   const [tickets, setTickets] = useState<InvestigationTicket[]>([]);
   const [pendingActions, setPendingActions] = useState<PendingAction[]>([]);
   const [patternAnalysis, setPatternAnalysis] = useState<PatternAnalysisResult | null>(null);
@@ -90,12 +114,13 @@ export function FraudSimulationProvider({ children }: { children: React.ReactNod
   const [activeAlertModal, setActiveAlertModal] = useState<FraudAlert | null>(null);
   const [ignoredAlerts, setIgnoredAlerts] = useState<Set<string>>(new Set());
   const [currentActiveNodeId, setCurrentActiveNodeId] = useState<string | null>(null);
+  const [sidePanelEntityType, setSidePanelEntityType] = useState<'PR' | 'PO' | 'Invoice' | null>(null);
 
   const simulationIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const runSimulationCycle = useCallback(() => {
-    // Define node order
-    const nodeOrder = ['pr', 'existingSupplier', 'rfq', 'po', 'gr', 'goodsIssue', 'invoice', 'payment'];
+    // Define node order matching the new flowchart structure
+    const nodeOrder = ['identifyRequirement', 'pr', 'plannedDelivery', 'goodsShipment', 'procurementOfMaterial', 'existingSupplier', 'identificationOfVendor', 'selectionOfVendor', 'po', 'goodsIssue', 'invoice', 'payment'];
     
     // Get current position or start from beginning
     let currentNodeIndex = currentActiveNodeId 
@@ -115,7 +140,8 @@ export function FraudSimulationProvider({ children }: { children: React.ReactNod
       // If we've completed the cycle, restart from the beginning
       if (currentNodeIndex >= nodeOrder.length) {
         currentNodeIndex = 0; // Reset to start
-        setActiveAlerts([]); // Clear alerts for new cycle
+        // Clear non-dummy alerts for new cycle, but keep dummy alerts
+        setActiveAlerts((prev) => prev.filter((alert) => alert.isDummy === true));
       }
 
       const nextNodeId = nodeOrder[currentNodeIndex];
@@ -126,11 +152,15 @@ export function FraudSimulationProvider({ children }: { children: React.ReactNod
       if (currentNodeIndex >= 2 && Math.random() < 0.3) {
         // Find alerts that match this node type
         const nodeTypeMap: Record<string, string[]> = {
+          identifyRequirement: ['PR'],
           pr: ['PR'],
+          plannedDelivery: ['PR'],
+          goodsShipment: ['GR'],
+          procurementOfMaterial: ['PR'],
           existingSupplier: ['Supplier'],
-          rfq: ['PR'],
+          identificationOfVendor: ['PR'],
+          selectionOfVendor: ['Supplier'],
           po: ['PO'],
-          gr: ['GR'],
           goodsIssue: ['GR'],
           invoice: ['Invoice'],
           payment: ['Invoice'],
@@ -148,14 +178,16 @@ export function FraudSimulationProvider({ children }: { children: React.ReactNod
           // Pick a random alert
           const alertToFire = availableAlerts[Math.floor(Math.random() * availableAlerts.length)];
           
-          // Pause simulation and trigger alert
-          setSimulationStatus('paused');
-          clearInterval(cycleInterval);
-          simulationIntervalRef.current = null;
-
-          setActiveAlerts((prev) => [...prev, alertToFire]);
-          setActiveAlertModal(alertToFire);
-          return;
+          // Add alert to list but don't pause simulation or show modal
+          setActiveAlerts((prev) => {
+            // Only add if not already in the list
+            if (!prev.find((a) => a.id === alertToFire.id)) {
+              return [...prev, alertToFire];
+            }
+            return prev;
+          });
+          // Don't show modal or pause during training
+          // setActiveAlertModal(alertToFire);
         }
       }
     }, 1500); // 1.5 seconds per step
@@ -166,9 +198,10 @@ export function FraudSimulationProvider({ children }: { children: React.ReactNod
   const initializeSimulation = useCallback(() => {
     setSimulationStatus('running');
     setCurrentStepIndex(0);
-    setActiveAlerts([]);
+    // Reset to dummy alerts only, preserving them
+    setActiveAlerts(getDummyAlerts());
     setActiveAlertModal(null);
-    setCurrentActiveNodeId('pr'); // Start from PR Generated
+    setCurrentActiveNodeId('identifyRequirement'); // Start from Identify Requirement
 
     // Clear any existing interval
     if (simulationIntervalRef.current) {
@@ -191,7 +224,7 @@ export function FraudSimulationProvider({ children }: { children: React.ReactNod
     if (simulationStatus === 'paused') {
       setSimulationStatus('running');
       // Move to next node before resuming (since current node already triggered alert)
-      const nodeOrder = ['pr', 'existingSupplier', 'rfq', 'po', 'gr', 'goodsIssue', 'invoice', 'payment'];
+      const nodeOrder = ['identifyRequirement', 'pr', 'plannedDelivery', 'goodsShipment', 'procurementOfMaterial', 'existingSupplier', 'identificationOfVendor', 'selectionOfVendor', 'po', 'goodsIssue', 'invoice', 'payment'];
       const currentIndex = currentActiveNodeId ? nodeOrder.indexOf(currentActiveNodeId) : -1;
       if (currentIndex >= 0 && currentIndex < nodeOrder.length - 1) {
         // Move to next node
@@ -199,9 +232,10 @@ export function FraudSimulationProvider({ children }: { children: React.ReactNod
         setCurrentStepIndex(currentIndex + 1);
       } else if (currentIndex >= nodeOrder.length - 1) {
         // If at last node, restart cycle
-        setCurrentActiveNodeId('pr');
+        setCurrentActiveNodeId('identifyRequirement');
         setCurrentStepIndex(0);
-        setActiveAlerts([]);
+        // Clear non-dummy alerts, but keep dummy alerts
+        setActiveAlerts((prev) => prev.filter((alert) => alert.isDummy === true));
       }
       // Resume the simulation cycle
       runSimulationCycle();
@@ -211,7 +245,8 @@ export function FraudSimulationProvider({ children }: { children: React.ReactNod
   const resetSimulation = useCallback(() => {
     setSimulationStatus('idle');
     setCurrentStepIndex(0);
-    setActiveAlerts([]);
+    // Reset to dummy alerts only
+    setActiveAlerts(getDummyAlerts());
     setActiveAlertModal(null);
     setCurrentActiveNodeId(null);
     setSelectedEntity(null);
@@ -353,6 +388,14 @@ export function FraudSimulationProvider({ children }: { children: React.ReactNod
     setPatternAnalysis(null);
   }, []);
 
+  const openSidePanel = useCallback((entityType: 'PR' | 'PO' | 'Invoice') => {
+    setSidePanelEntityType(entityType);
+  }, []);
+
+  const closeSidePanel = useCallback(() => {
+    setSidePanelEntityType(null);
+  }, []);
+
   const value: FraudSimulationContextType = {
     suppliers: mockSuppliers,
     employees: mockEmployees,
@@ -366,12 +409,16 @@ export function FraudSimulationProvider({ children }: { children: React.ReactNod
     tickets,
     pendingActions,
     patternAnalysis,
+    poClusters: mockPOClusters,
+    prClusters: mockPRClusters,
+    invoiceClusters: mockInvoiceClusters,
     simulationStatus,
     currentStepIndex,
     selectedEntity,
     selectedProcessNodeId,
     selectedKnowledgeNodeId,
     activeAlertModal,
+    sidePanelEntityType,
     initializeSimulation,
     pauseSimulation,
     resumeSimulation,
@@ -387,6 +434,8 @@ export function FraudSimulationProvider({ children }: { children: React.ReactNod
     markAlertAsMistake,
     reportAlert,
     downloadAlertReport,
+    openSidePanel,
+    closeSidePanel,
   };
 
   return (

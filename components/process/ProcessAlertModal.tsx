@@ -17,6 +17,7 @@ export default function ProcessAlertModal() {
     reportAlert,
     downloadAlertReport,
     resumeSimulation,
+    openSidePanel,
   } = useFraudSimulation();
 
   if (!activeAlertModal) return null;
@@ -111,6 +112,46 @@ export default function ProcessAlertModal() {
                 <li key={idx}>{action}</li>
               ))}
             </ul>
+          </div>
+
+          {/* Clickable Entity Buttons */}
+          <div>
+            <h4 className="font-semibold mb-3">View Related Clusters</h4>
+            <div className="flex gap-3">
+              <button
+                className="btn btn-outline btn-primary flex-1"
+                onClick={() => {
+                  openSidePanel('PR');
+                }}
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                PR
+              </button>
+              <button
+                className="btn btn-outline btn-primary flex-1"
+                onClick={() => {
+                  openSidePanel('PO');
+                }}
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                PO
+              </button>
+              <button
+                className="btn btn-outline btn-primary flex-1"
+                onClick={() => {
+                  openSidePanel('Invoice');
+                }}
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Invoice Recording
+              </button>
+            </div>
           </div>
         </div>
 

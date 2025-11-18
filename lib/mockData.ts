@@ -7,6 +7,10 @@ import {
   GR,
   Invoice,
   FraudAlert,
+  POCluster,
+  PRCluster,
+  InvoiceCluster,
+  FraudPatternDetails,
 } from './types';
 import { subMonths, subDays, format } from 'date-fns';
 
@@ -859,4 +863,705 @@ export const allMockPOs = [...mockPOs, ...additionalPOs];
 // Expand Invoices to ~50
 const additionalInvoices = generateMoreInvoices(41, mockInvoices.length, allMockPOs, mockGRs);
 export const allMockInvoices = [...mockInvoices, ...additionalInvoices];
+
+// Generate PO Clusters
+const generateCluster = (
+  id: string,
+  clusterId: string,
+  supplierId: string,
+  employeeId: string,
+  riskScore: number,
+  contractCount: number,
+  totalAmount: number
+): POCluster => {
+  const matchingPOs = allMockPOs.filter(
+    po => po.supplier.id === supplierId && po.pr.requester.id === employeeId
+  );
+  const selectedPOs = matchingPOs.length > 0 
+    ? matchingPOs.slice(0, Math.min(contractCount, matchingPOs.length))
+    : allMockPOs.slice(0, contractCount); // Fallback if no matches
+  
+  return {
+    id,
+    clusterId,
+    supplierId,
+    employeeId,
+    riskScore,
+    contractInvolved: selectedPOs.length,
+    totalAmount,
+    detectedAt: new Date('2025-11-17T14:16:00').toISOString(),
+    pos: selectedPOs,
+  };
+};
+
+export const mockPOClusters: POCluster[] = [
+  generateCluster('CLUSTER-001', 'cluster-supplier-1-emp-1', 'SUP-001', 'EMP-001', 100.0, 5, 4750000),
+  generateCluster('CLUSTER-002', 'cluster-supplier-4-emp-6', 'SUP-004', 'EMP-006', 50.0, 4, 5520000),
+  generateCluster('CLUSTER-003', 'cluster-supplier-2-emp-5', 'SUP-002', 'EMP-005', 45.0, 3, 2884000),
+  generateCluster('CLUSTER-004', 'cluster-supplier-3-emp-2', 'SUP-003', 'EMP-002', 35.0, 6, 1923000),
+  generateCluster('CLUSTER-005', 'cluster-supplier-5-emp-3', 'SUP-005', 'EMP-003', 85.0, 4, 6230000),
+  generateCluster('CLUSTER-006', 'cluster-supplier-8-emp-1', 'SUP-008', 'EMP-001', 70.0, 5, 4150000),
+  generateCluster('CLUSTER-007', 'cluster-supplier-1-emp-4', 'SUP-001', 'EMP-004', 90.0, 3, 3890000),
+  generateCluster('CLUSTER-008', 'cluster-supplier-6-emp-7', 'SUP-006', 'EMP-007', 55.0, 4, 3210000),
+  generateCluster('CLUSTER-009', 'cluster-supplier-9-emp-2', 'SUP-009', 'EMP-002', 75.0, 5, 4670000),
+  generateCluster('CLUSTER-010', 'cluster-supplier-2-emp-8', 'SUP-002', 'EMP-008', 40.0, 3, 2560000),
+  generateCluster('CLUSTER-011', 'cluster-supplier-7-emp-5', 'SUP-007', 'EMP-005', 60.0, 4, 3420000),
+  generateCluster('CLUSTER-012', 'cluster-supplier-10-emp-1', 'SUP-010', 'EMP-001', 65.0, 5, 3980000),
+  generateCluster('CLUSTER-013', 'cluster-supplier-1-emp-9', 'SUP-001', 'EMP-009', 95.0, 3, 5120000),
+  generateCluster('CLUSTER-014', 'cluster-supplier-4-emp-10', 'SUP-004', 'EMP-010', 48.0, 4, 2890000),
+  generateCluster('CLUSTER-015', 'cluster-supplier-3-emp-6', 'SUP-003', 'EMP-006', 80.0, 5, 4450000),
+  generateCluster('CLUSTER-016', 'cluster-supplier-5-emp-2', 'SUP-005', 'EMP-002', 42.0, 3, 2730000),
+  generateCluster('CLUSTER-017', 'cluster-supplier-8-emp-4', 'SUP-008', 'EMP-004', 58.0, 4, 3670000),
+  generateCluster('CLUSTER-018', 'cluster-supplier-11-emp-1', 'SUP-011', 'EMP-001', 72.0, 5, 4310000),
+  generateCluster('CLUSTER-019', 'cluster-supplier-12-emp-3', 'SUP-012', 'EMP-003', 68.0, 4, 3840000),
+  generateCluster('CLUSTER-020', 'cluster-supplier-1-emp-7', 'SUP-001', 'EMP-007', 88.0, 6, 5290000),
+];
+
+// Generate PR Clusters
+const generatePRCluster = (
+  id: string,
+  clusterId: string,
+  department: string,
+  employeeId: string,
+  riskScore: number,
+  requestCount: number,
+  totalAmount: number
+): PRCluster => {
+  const matchingPRs = allMockPRs.filter(
+    pr => pr.department === department && pr.requester.id === employeeId
+  );
+  const selectedPRs = matchingPRs.length > 0 
+    ? matchingPRs.slice(0, Math.min(requestCount, matchingPRs.length))
+    : allMockPRs.slice(0, requestCount);
+  
+  return {
+    id,
+    clusterId,
+    department,
+    employeeId,
+    riskScore,
+    requestsInvolved: selectedPRs.length,
+    totalAmount,
+    detectedAt: new Date('2025-11-17T14:16:00').toISOString(),
+    prs: selectedPRs,
+  };
+};
+
+export const mockPRClusters: PRCluster[] = [
+  generatePRCluster('PR-CLUSTER-001', 'pr-dept-procurement-requester-1', 'Procurement', 'EMP-001', 95.0, 8, 12500000),
+  generatePRCluster('PR-CLUSTER-002', 'pr-dept-operations-requester-2', 'Operations', 'EMP-002', 75.0, 6, 8900000),
+  generatePRCluster('PR-CLUSTER-003', 'pr-dept-procurement-requester-3', 'Procurement', 'EMP-003', 65.0, 5, 7200000),
+  generatePRCluster('PR-CLUSTER-004', 'pr-dept-finance-requester-4', 'Finance', 'EMP-004', 55.0, 4, 5600000),
+  generatePRCluster('PR-CLUSTER-005', 'pr-dept-procurement-requester-5', 'Procurement', 'EMP-005', 85.0, 7, 9800000),
+  generatePRCluster('PR-CLUSTER-006', 'pr-dept-operations-requester-6', 'Operations', 'EMP-006', 70.0, 6, 8100000),
+  generatePRCluster('PR-CLUSTER-007', 'pr-dept-procurement-requester-7', 'Procurement', 'EMP-007', 80.0, 7, 9200000),
+  generatePRCluster('PR-CLUSTER-008', 'pr-dept-operations-requester-10', 'Operations', 'EMP-010', 60.0, 5, 6400000),
+  generatePRCluster('PR-CLUSTER-009', 'pr-dept-procurement-requester-9', 'Procurement', 'EMP-009', 90.0, 8, 11200000),
+  generatePRCluster('PR-CLUSTER-010', 'pr-dept-finance-requester-8', 'Finance', 'EMP-008', 50.0, 4, 4800000),
+  generatePRCluster('PR-CLUSTER-011', 'pr-dept-procurement-material-1', 'Procurement', 'EMP-001', 88.0, 7, 10500000),
+  generatePRCluster('PR-CLUSTER-012', 'pr-dept-operations-material-2', 'Operations', 'EMP-002', 72.0, 6, 8500000),
+  generatePRCluster('PR-CLUSTER-013', 'pr-dept-procurement-material-3', 'Procurement', 'EMP-003', 68.0, 5, 7500000),
+  generatePRCluster('PR-CLUSTER-014', 'pr-dept-procurement-material-5', 'Procurement', 'EMP-005', 82.0, 7, 9500000),
+  generatePRCluster('PR-CLUSTER-015', 'pr-dept-operations-material-6', 'Operations', 'EMP-006', 58.0, 5, 6200000),
+];
+
+// Generate Invoice Clusters
+const generateInvoiceCluster = (
+  id: string,
+  clusterId: string,
+  supplierId: string,
+  riskScore: number,
+  invoiceCount: number,
+  totalAmount: number
+): InvoiceCluster => {
+  const matchingInvoices = allMockInvoices.filter(
+    inv => inv.supplier.id === supplierId
+  );
+  const selectedInvoices = matchingInvoices.length > 0 
+    ? matchingInvoices.slice(0, Math.min(invoiceCount, matchingInvoices.length))
+    : allMockInvoices.slice(0, invoiceCount);
+  
+  return {
+    id,
+    clusterId,
+    supplierId,
+    riskScore,
+    invoicesInvolved: selectedInvoices.length,
+    totalAmount,
+    detectedAt: new Date('2025-11-17T14:16:00').toISOString(),
+    invoices: selectedInvoices,
+  };
+};
+
+export const mockInvoiceClusters: InvoiceCluster[] = [
+  generateInvoiceCluster('INV-CLUSTER-001', 'inv-supplier-1-amount-discrepancy', 'SUP-001', 92.0, 12, 18500000),
+  generateInvoiceCluster('INV-CLUSTER-002', 'inv-supplier-2-timing-pattern', 'SUP-002', 68.0, 8, 12400000),
+  generateInvoiceCluster('INV-CLUSTER-003', 'inv-supplier-3-variance-pattern', 'SUP-003', 78.0, 10, 15200000),
+  generateInvoiceCluster('INV-CLUSTER-004', 'inv-supplier-4-status-anomaly', 'SUP-004', 45.0, 6, 9800000),
+  generateInvoiceCluster('INV-CLUSTER-005', 'inv-supplier-5-payment-pattern', 'SUP-005', 88.0, 11, 16800000),
+  generateInvoiceCluster('INV-CLUSTER-006', 'inv-supplier-8-hold-pattern', 'SUP-008', 72.0, 9, 13800000),
+  generateInvoiceCluster('INV-CLUSTER-007', 'inv-supplier-9-amount-spike', 'SUP-009', 82.0, 10, 16200000),
+  generateInvoiceCluster('INV-CLUSTER-008', 'inv-supplier-1-duplicate-pattern', 'SUP-001', 90.0, 12, 17800000),
+  generateInvoiceCluster('INV-CLUSTER-009', 'inv-supplier-2-frequency-anomaly', 'SUP-002', 65.0, 8, 11800000),
+  generateInvoiceCluster('INV-CLUSTER-010', 'inv-supplier-3-date-pattern', 'SUP-003', 75.0, 9, 14500000),
+  generateInvoiceCluster('INV-CLUSTER-011', 'inv-supplier-6-currency-pattern', 'SUP-006', 55.0, 7, 11200000),
+  generateInvoiceCluster('INV-CLUSTER-012', 'inv-supplier-7-approval-pattern', 'SUP-007', 48.0, 6, 9200000),
+  generateInvoiceCluster('INV-CLUSTER-013', 'inv-supplier-10-threshold-pattern', 'SUP-010', 62.0, 8, 12800000),
+  generateInvoiceCluster('INV-CLUSTER-014', 'inv-supplier-11-batch-pattern', 'SUP-011', 70.0, 9, 13500000),
+  generateInvoiceCluster('INV-CLUSTER-015', 'inv-supplier-12-sequence-pattern', 'SUP-012', 58.0, 7, 10800000),
+];
+
+// Generate Fraud Pattern Details
+export const mockFraudPatternDetails: Record<string, FraudPatternDetails> = {
+  'cluster-supplier-1-emp-1': {
+    clusterId: 'cluster-supplier-1-emp-1',
+    riskScore: 100.0,
+    patternType: 'Split Contract',
+    patternDescription: '5 POs detected with: Same supplier (Astra Metals Pvt. Ltd.), Same requisitioner (Rohan Mehta), Same buyer (Rohan Mehta), Same material (Carbon Steel Sheets), Split contract pattern: Individual POs below ₹10L threshold, but combined total ₹47.50L exceeds Manager limit',
+    fraudIndicators: [
+      'Same Supplier',
+      'Same Requisitioner',
+      'Same Buyer',
+      'Same Material',
+      'Same Location',
+      'Below Threshold (5.0% below)',
+    ],
+    approvalThreshold: 1000000, // ₹10L
+    thresholdLabel: 'Manager',
+    averagePOAmount: 950000, // ₹9.50L
+    averageBelowThreshold: 50000, // ₹0.50L
+    averageBelowThresholdPercent: 5.0,
+    totalAmount: 4750000, // ₹47.50L
+    totalContract: 5,
+    detectedAt: new Date('2025-11-17T15:54:00').toISOString(),
+    suspiciousPOs: [
+      {
+        poNumber: 'PO-FRAUD-001-001',
+        date: '2023-12-26',
+        amount: 950000,
+        supplier: 'Astra Metals Pvt. Ltd.',
+        requisitioner: 'Rohan Mehta',
+        material: 'Carbon Steel Sheets',
+      },
+      {
+        poNumber: 'PO-FRAUD-001-002',
+        date: '2023-12-27',
+        amount: 950000,
+        supplier: 'Astra Metals Pvt. Ltd.',
+        requisitioner: 'Rohan Mehta',
+        material: 'Carbon Steel Sheets',
+      },
+      {
+        poNumber: 'PO-FRAUD-001-003',
+        date: '2023-12-28',
+        amount: 950000,
+        supplier: 'Astra Metals Pvt. Ltd.',
+        requisitioner: 'Rohan Mehta',
+        material: 'Carbon Steel Sheets',
+      },
+      {
+        poNumber: 'PO-FRAUD-001-004',
+        date: '2023-12-29',
+        amount: 950000,
+        supplier: 'Astra Metals Pvt. Ltd.',
+        requisitioner: 'Rohan Mehta',
+        material: 'Carbon Steel Sheets',
+      },
+      {
+        poNumber: 'PO-FRAUD-001-005',
+        date: '2023-12-30',
+        amount: 950000,
+        supplier: 'Astra Metals Pvt. Ltd.',
+        requisitioner: 'Rohan Mehta',
+        material: 'Carbon Steel Sheets',
+      },
+    ],
+  },
+  'cluster-supplier-4-emp-6': {
+    clusterId: 'cluster-supplier-4-emp-6',
+    riskScore: 50.0,
+    patternType: 'Repeated Orders',
+    patternDescription: '4 POs detected with: Same supplier (TechServ Consulting Inc.), Same requisitioner (Anjali Desai), Same buyer (Anjali Desai), Same material (Consulting Services), Repeated high-value orders pattern',
+    fraudIndicators: [
+      'Same Supplier',
+      'Same Requisitioner',
+      'Same Buyer',
+      'Same Material',
+      'Repeated Pattern',
+    ],
+    approvalThreshold: 1500000, // ₹15L
+    thresholdLabel: 'Director',
+    averagePOAmount: 1380000, // ₹13.80L
+    averageBelowThreshold: 120000, // ₹1.20L
+    averageBelowThresholdPercent: 8.0,
+    totalAmount: 5520000, // ₹55.20L
+    totalContract: 4,
+    detectedAt: new Date('2025-11-17T15:54:00').toISOString(),
+    suspiciousPOs: [
+      {
+        poNumber: 'PO-FRAUD-002-001',
+        date: '2024-01-15',
+        amount: 1380000,
+        supplier: 'TechServ Consulting Inc.',
+        requisitioner: 'Anjali Desai',
+        material: 'Consulting Services',
+      },
+      {
+        poNumber: 'PO-FRAUD-002-002',
+        date: '2024-02-10',
+        amount: 1380000,
+        supplier: 'TechServ Consulting Inc.',
+        requisitioner: 'Anjali Desai',
+        material: 'Consulting Services',
+      },
+      {
+        poNumber: 'PO-FRAUD-002-003',
+        date: '2024-03-05',
+        amount: 1380000,
+        supplier: 'TechServ Consulting Inc.',
+        requisitioner: 'Anjali Desai',
+        material: 'Consulting Services',
+      },
+      {
+        poNumber: 'PO-FRAUD-002-004',
+        date: '2024-03-20',
+        amount: 1380000,
+        supplier: 'TechServ Consulting Inc.',
+        requisitioner: 'Anjali Desai',
+        material: 'Consulting Services',
+      },
+    ],
+  },
+  'cluster-supplier-2-emp-5': {
+    clusterId: 'cluster-supplier-2-emp-5',
+    riskScore: 45.0,
+    patternType: 'Volume Split',
+    patternDescription: '3 POs detected with: Same supplier (GlobalChem Logistics BV), Same requisitioner (Vikram Singh), Same buyer (Vikram Singh), Same material (Industrial Solvents), Volume split pattern to avoid approval limits',
+    fraudIndicators: [
+      'Same Supplier',
+      'Same Requisitioner',
+      'Same Buyer',
+      'Same Material',
+      'Volume Split',
+    ],
+    approvalThreshold: 1000000, // ₹10L
+    thresholdLabel: 'Manager',
+    averagePOAmount: 961333, // ₹9.61L
+    averageBelowThreshold: 38667, // ₹0.39L
+    averageBelowThresholdPercent: 3.9,
+    totalAmount: 2884000, // ₹28.84L
+    totalContract: 3,
+    detectedAt: new Date('2025-11-17T15:54:00').toISOString(),
+    suspiciousPOs: [
+      {
+        poNumber: 'PO-FRAUD-003-001',
+        date: '2024-04-12',
+        amount: 961333,
+        supplier: 'GlobalChem Logistics BV',
+        requisitioner: 'Vikram Singh',
+        material: 'Industrial Solvents',
+      },
+      {
+        poNumber: 'PO-FRAUD-003-002',
+        date: '2024-04-13',
+        amount: 961333,
+        supplier: 'GlobalChem Logistics BV',
+        requisitioner: 'Vikram Singh',
+        material: 'Industrial Solvents',
+      },
+      {
+        poNumber: 'PO-FRAUD-003-003',
+        date: '2024-04-14',
+        amount: 961333,
+        supplier: 'GlobalChem Logistics BV',
+        requisitioner: 'Vikram Singh',
+        material: 'Industrial Solvents',
+      },
+    ],
+  },
+  // PR Cluster Details
+  'pr-dept-procurement-requester-1': {
+    clusterId: 'pr-dept-procurement-requester-1',
+    riskScore: 95.0,
+    patternType: 'Department Pattern',
+    patternDescription: '8 PRs detected with: Same department (Procurement), Same requisitioner (Rohan Mehta), Unusual high-frequency requests, Similar material categories, Pattern suggests potential bypass of approval workflows',
+    fraudIndicators: [
+      'Same Department',
+      'Same Requisitioner',
+      'High Frequency',
+      'Similar Materials',
+      'Above Normal Threshold',
+      'Rapid Succession',
+    ],
+    approvalThreshold: 800000, // ₹8L
+    thresholdLabel: 'Manager',
+    averagePOAmount: 1562500, // ₹15.63L
+    averageBelowThreshold: 0,
+    averageBelowThresholdPercent: 0,
+    totalAmount: 12500000, // ₹125L
+    totalContract: 8,
+    detectedAt: new Date('2025-11-17T15:54:00').toISOString(),
+    suspiciousPOs: [
+      {
+        poNumber: 'PR-2024-0001',
+        date: '2024-01-15',
+        amount: 1562500,
+        supplier: 'Astra Metals Pvt. Ltd.',
+        requisitioner: 'Rohan Mehta',
+        material: 'Carbon Steel Sheets',
+      },
+      {
+        poNumber: 'PR-2024-0012',
+        date: '2024-02-20',
+        amount: 1562500,
+        supplier: 'Astra Metals Pvt. Ltd.',
+        requisitioner: 'Rohan Mehta',
+        material: 'Carbon Steel Sheets',
+      },
+      {
+        poNumber: 'PR-2024-0023',
+        date: '2024-03-10',
+        amount: 1562500,
+        supplier: 'Astra Metals Pvt. Ltd.',
+        requisitioner: 'Rohan Mehta',
+        material: 'Carbon Steel Sheets',
+      },
+      {
+        poNumber: 'PR-2024-0034',
+        date: '2024-04-05',
+        amount: 1562500,
+        supplier: 'Astra Metals Pvt. Ltd.',
+        requisitioner: 'Rohan Mehta',
+        material: 'Carbon Steel Sheets',
+      },
+      {
+        poNumber: 'PR-2024-0045',
+        date: '2024-05-12',
+        amount: 1562500,
+        supplier: 'Astra Metals Pvt. Ltd.',
+        requisitioner: 'Rohan Mehta',
+        material: 'Carbon Steel Sheets',
+      },
+      {
+        poNumber: 'PR-2024-0056',
+        date: '2024-06-18',
+        amount: 1562500,
+        supplier: 'Astra Metals Pvt. Ltd.',
+        requisitioner: 'Rohan Mehta',
+        material: 'Carbon Steel Sheets',
+      },
+      {
+        poNumber: 'PR-2024-0067',
+        date: '2024-07-22',
+        amount: 1562500,
+        supplier: 'Astra Metals Pvt. Ltd.',
+        requisitioner: 'Rohan Mehta',
+        material: 'Carbon Steel Sheets',
+      },
+      {
+        poNumber: 'PR-2024-0078',
+        date: '2024-08-30',
+        amount: 1562500,
+        supplier: 'Astra Metals Pvt. Ltd.',
+        requisitioner: 'Rohan Mehta',
+        material: 'Carbon Steel Sheets',
+      },
+    ],
+  },
+  'pr-dept-operations-requester-2': {
+    clusterId: 'pr-dept-operations-requester-2',
+    riskScore: 75.0,
+    patternType: 'Repeated Requests',
+    patternDescription: '6 PRs detected with: Same department (Operations), Same requisitioner (Priya Sharma), Repeated requests for similar materials, Unusual timing patterns',
+    fraudIndicators: [
+      'Same Department',
+      'Same Requisitioner',
+      'Repeated Pattern',
+      'Similar Materials',
+      'Pattern Deviation',
+    ],
+    approvalThreshold: 800000,
+    thresholdLabel: 'Manager',
+    averagePOAmount: 1483333,
+    averageBelowThreshold: 0,
+    averageBelowThresholdPercent: 0,
+    totalAmount: 8900000,
+    totalContract: 6,
+    detectedAt: new Date('2025-11-17T15:54:00').toISOString(),
+    suspiciousPOs: [
+      {
+        poNumber: 'PR-2024-0002',
+        date: '2024-01-20',
+        amount: 1483333,
+        supplier: 'TechServ Consulting Inc.',
+        requisitioner: 'Priya Sharma',
+        material: 'Consulting Services',
+      },
+      {
+        poNumber: 'PR-2024-0013',
+        date: '2024-02-25',
+        amount: 1483333,
+        supplier: 'TechServ Consulting Inc.',
+        requisitioner: 'Priya Sharma',
+        material: 'Consulting Services',
+      },
+      {
+        poNumber: 'PR-2024-0024',
+        date: '2024-03-15',
+        amount: 1483333,
+        supplier: 'TechServ Consulting Inc.',
+        requisitioner: 'Priya Sharma',
+        material: 'Consulting Services',
+      },
+      {
+        poNumber: 'PR-2024-0035',
+        date: '2024-04-10',
+        amount: 1483333,
+        supplier: 'TechServ Consulting Inc.',
+        requisitioner: 'Priya Sharma',
+        material: 'Consulting Services',
+      },
+      {
+        poNumber: 'PR-2024-0046',
+        date: '2024-05-18',
+        amount: 1483333,
+        supplier: 'TechServ Consulting Inc.',
+        requisitioner: 'Priya Sharma',
+        material: 'Consulting Services',
+      },
+      {
+        poNumber: 'PR-2024-0057',
+        date: '2024-06-25',
+        amount: 1483333,
+        supplier: 'TechServ Consulting Inc.',
+        requisitioner: 'Priya Sharma',
+        material: 'Consulting Services',
+      },
+    ],
+  },
+  // Invoice Cluster Details
+  'inv-supplier-1-amount-discrepancy': {
+    clusterId: 'inv-supplier-1-amount-discrepancy',
+    riskScore: 92.0,
+    patternType: 'Invoice Discrepancy',
+    patternDescription: '12 Invoices detected with: Same supplier (Astra Metals Pvt. Ltd.), Significant invoice amount discrepancies compared to PO values, Multiple invoices on hold status, Payment timing anomalies detected',
+    fraudIndicators: [
+      'Same Supplier',
+      'Amount Discrepancies',
+      'Timing Anomalies',
+      'Status Patterns',
+      'High Variance',
+      'Multiple On Hold',
+    ],
+    approvalThreshold: 1200000, // ₹12L
+    thresholdLabel: 'Director',
+    averagePOAmount: 1541667, // ₹15.42L
+    averageBelowThreshold: 0,
+    averageBelowThresholdPercent: 0,
+    totalAmount: 18500000, // ₹185L
+    totalContract: 12,
+    detectedAt: new Date('2025-11-17T15:54:00').toISOString(),
+    suspiciousPOs: [
+      {
+        poNumber: 'INV-2024-0091',
+        date: '2024-01-10',
+        amount: 1541667,
+        supplier: 'Astra Metals Pvt. Ltd.',
+        requisitioner: 'Rohan Mehta',
+        material: 'Carbon Steel Sheets',
+      },
+      {
+        poNumber: 'INV-2024-0102',
+        date: '2024-02-15',
+        amount: 1541667,
+        supplier: 'Astra Metals Pvt. Ltd.',
+        requisitioner: 'Rohan Mehta',
+        material: 'Carbon Steel Sheets',
+      },
+      {
+        poNumber: 'INV-2024-0113',
+        date: '2024-03-20',
+        amount: 1541667,
+        supplier: 'Astra Metals Pvt. Ltd.',
+        requisitioner: 'Rohan Mehta',
+        material: 'Carbon Steel Sheets',
+      },
+      {
+        poNumber: 'INV-2024-0124',
+        date: '2024-04-25',
+        amount: 1541667,
+        supplier: 'Astra Metals Pvt. Ltd.',
+        requisitioner: 'Rohan Mehta',
+        material: 'Carbon Steel Sheets',
+      },
+      {
+        poNumber: 'INV-2024-0135',
+        date: '2024-05-30',
+        amount: 1541667,
+        supplier: 'Astra Metals Pvt. Ltd.',
+        requisitioner: 'Rohan Mehta',
+        material: 'Carbon Steel Sheets',
+      },
+      {
+        poNumber: 'INV-2024-0146',
+        date: '2024-06-05',
+        amount: 1541667,
+        supplier: 'Astra Metals Pvt. Ltd.',
+        requisitioner: 'Rohan Mehta',
+        material: 'Carbon Steel Sheets',
+      },
+      {
+        poNumber: 'INV-2024-0157',
+        date: '2024-07-10',
+        amount: 1541667,
+        supplier: 'Astra Metals Pvt. Ltd.',
+        requisitioner: 'Rohan Mehta',
+        material: 'Carbon Steel Sheets',
+      },
+      {
+        poNumber: 'INV-2024-0168',
+        date: '2024-08-15',
+        amount: 1541667,
+        supplier: 'Astra Metals Pvt. Ltd.',
+        requisitioner: 'Rohan Mehta',
+        material: 'Carbon Steel Sheets',
+      },
+      {
+        poNumber: 'INV-2024-0179',
+        date: '2024-09-20',
+        amount: 1541667,
+        supplier: 'Astra Metals Pvt. Ltd.',
+        requisitioner: 'Rohan Mehta',
+        material: 'Carbon Steel Sheets',
+      },
+      {
+        poNumber: 'INV-2024-0180',
+        date: '2024-10-25',
+        amount: 1541667,
+        supplier: 'Astra Metals Pvt. Ltd.',
+        requisitioner: 'Rohan Mehta',
+        material: 'Carbon Steel Sheets',
+      },
+      {
+        poNumber: 'INV-2024-0191',
+        date: '2024-11-05',
+        amount: 1541667,
+        supplier: 'Astra Metals Pvt. Ltd.',
+        requisitioner: 'Rohan Mehta',
+        material: 'Carbon Steel Sheets',
+      },
+      {
+        poNumber: 'INV-2024-0202',
+        date: '2024-11-10',
+        amount: 1541667,
+        supplier: 'Astra Metals Pvt. Ltd.',
+        requisitioner: 'Rohan Mehta',
+        material: 'Carbon Steel Sheets',
+      },
+    ],
+  },
+  'inv-supplier-3-variance-pattern': {
+    clusterId: 'inv-supplier-3-variance-pattern',
+    riskScore: 78.0,
+    patternType: 'Amount Variance',
+    patternDescription: '10 Invoices detected with: Same supplier (Pacific Packaging Solutions), Invoice amounts exceeding PO values, Payment status inconsistencies, Unusual invoice date patterns',
+    fraudIndicators: [
+      'Same Supplier',
+      'Amount Discrepancies',
+      'Status Patterns',
+      'Moderate Variance',
+      'Date Anomalies',
+    ],
+    approvalThreshold: 1200000,
+    thresholdLabel: 'Director',
+    averagePOAmount: 1520000,
+    averageBelowThreshold: 0,
+    averageBelowThresholdPercent: 0,
+    totalAmount: 15200000,
+    totalContract: 10,
+    detectedAt: new Date('2025-11-17T15:54:00').toISOString(),
+    suspiciousPOs: [
+      {
+        poNumber: 'INV-2024-0203',
+        date: '2024-01-12',
+        amount: 1520000,
+        supplier: 'Pacific Packaging Solutions',
+        requisitioner: 'Priya Sharma',
+        material: 'Corrugated Boxes',
+      },
+      {
+        poNumber: 'INV-2024-0214',
+        date: '2024-02-18',
+        amount: 1520000,
+        supplier: 'Pacific Packaging Solutions',
+        requisitioner: 'Priya Sharma',
+        material: 'Corrugated Boxes',
+      },
+      {
+        poNumber: 'INV-2024-0225',
+        date: '2024-03-22',
+        amount: 1520000,
+        supplier: 'Pacific Packaging Solutions',
+        requisitioner: 'Priya Sharma',
+        material: 'Corrugated Boxes',
+      },
+      {
+        poNumber: 'INV-2024-0236',
+        date: '2024-04-28',
+        amount: 1520000,
+        supplier: 'Pacific Packaging Solutions',
+        requisitioner: 'Priya Sharma',
+        material: 'Corrugated Boxes',
+      },
+      {
+        poNumber: 'INV-2024-0247',
+        date: '2024-05-08',
+        amount: 1520000,
+        supplier: 'Pacific Packaging Solutions',
+        requisitioner: 'Priya Sharma',
+        material: 'Corrugated Boxes',
+      },
+      {
+        poNumber: 'INV-2024-0258',
+        date: '2024-06-14',
+        amount: 1520000,
+        supplier: 'Pacific Packaging Solutions',
+        requisitioner: 'Priya Sharma',
+        material: 'Corrugated Boxes',
+      },
+      {
+        poNumber: 'INV-2024-0269',
+        date: '2024-07-20',
+        amount: 1520000,
+        supplier: 'Pacific Packaging Solutions',
+        requisitioner: 'Priya Sharma',
+        material: 'Corrugated Boxes',
+      },
+      {
+        poNumber: 'INV-2024-0270',
+        date: '2024-08-26',
+        amount: 1520000,
+        supplier: 'Pacific Packaging Solutions',
+        requisitioner: 'Priya Sharma',
+        material: 'Corrugated Boxes',
+      },
+      {
+        poNumber: 'INV-2024-0281',
+        date: '2024-09-30',
+        amount: 1520000,
+        supplier: 'Pacific Packaging Solutions',
+        requisitioner: 'Priya Sharma',
+        material: 'Corrugated Boxes',
+      },
+      {
+        poNumber: 'INV-2024-0292',
+        date: '2024-10-12',
+        amount: 1520000,
+        supplier: 'Pacific Packaging Solutions',
+        requisitioner: 'Priya Sharma',
+        material: 'Corrugated Boxes',
+      },
+    ],
+  },
+};
 
